@@ -15,16 +15,11 @@ jobs:
         path: kernel_source
         fetch-depth: 1
 
-    - name: O Exorcismo do Baseband-guard (Fix Submodules)
+    - name: Baixar APENAS o KernelSU (Ignorando lixo)
       working-directory: kernel_source
       run: |
-        # Remove a referência do submódulo quebrado para não travar o git
-        git config --file .gitmodules --remove-section submodule.Baseband-guard || true
-        git rm --cached Baseband-guard || true
-        rm -rf Baseband-guard || true
-        
-        # Agora sim, atualiza apenas os submódulos saudáveis (como o KernelSU)
-        git submodule update --init --recursive
+        # O Git vai ignorar o nomount, Baseband e focar 100% no KernelSU
+        git submodule update --init --recursive KernelSU
 
     - name: Setup Build Environment
       run: |
@@ -42,7 +37,7 @@ jobs:
         export ARCH=arm64
         export SUBARCH=arm64
         
-        # Trava de segurança para o KernelSU (Caso o DevCat3 tenha colocado na raiz)
+        # Trava de segurança para o KernelSU
         if [ ! -f "drivers/kernelsu/Kconfig" ] && [ -d "KernelSU" ]; then
             echo "Corrigindo o caminho do KernelSU..."
             ln -sf ../KernelSU drivers/kernelsu
