@@ -15,12 +15,6 @@ jobs:
         path: kernel_source
         fetch-depth: 1
 
-    - name: Baixar APENAS o KernelSU (Ignorando lixo)
-      working-directory: kernel_source
-      run: |
-        # O Git vai ignorar o nomount, Baseband e focar 100% no KernelSU
-        git submodule update --init --recursive KernelSU
-
     - name: Setup Build Environment
       run: |
         sudo apt-get update
@@ -29,7 +23,30 @@ jobs:
     - name: Download Proton Clang
       run: |
         git clone --depth=1 https://github.com/kdrag0n/proton-clang.git clang
+
+    - name: A Grande Limpeza (Hack dos Submodulos)
+      working-directory: kernel_source
+      run: |
+        # 1. Explodimos o arquivo de submodulos para o Git parar de dar erro 128
+        rm -f .gitmodules
         
+        # 2. Baixamos o ReSukiSU (KernelSU modificado do DevCat3) na mão!
+        rm -rf KernelSU
+        git clone https://github.com/ReSukiSU/ReSukiSU KernelSU
+        
+        # 3. Enganamos o compilador criando arquivos vazios para os mods fantasmas
+        mkdir -p security/baseband-guard
+        touch security/baseband-guard/Kconfig
+        touch security/baseband-guard/Makefile
+        
+        mkdir -p nomount
+        touch nomount/Kconfig
+        touch nomount/Makefile
+        
+        mkdir -p Baseband-guard
+        touch Baseband-guard/Kconfig
+        touch Baseband-guard/Makefile
+
     - name: Build the Kernel
       working-directory: kernel_source
       run: |
@@ -38,7 +55,7 @@ jobs:
         export SUBARCH=arm64
         
         # Trava de segurança para o KernelSU
-        if [ ! -f "drivers/kernelsu/Kconfig" ] && [ -d "KernelSU" ]; then
+        if [ ! -f "drivers/kernelsu/Kconfig" ]; then
             echo "Corrigindo o caminho do KernelSU..."
             ln -sf ../KernelSU drivers/kernelsu
         fi
@@ -46,7 +63,7 @@ jobs:
         # Gerando o .config
         make O=out ARCH=arm64 gta4l_eur_open_defconfig
         
-        # A Compilação pesada
+        # A Compilação pesada (A Forja)
         make -j$(nproc) O=out ARCH=arm64 CC=clang CROSS_COMPILE=aarch64-linux-gnu- CROSS_COMPILE_ARM32=arm-linux-gnueabi- LLVM=1 LLVM_IAS=1
         
     - name: Upload Kernel Artifact
