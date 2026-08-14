@@ -1,0 +1,44 @@
+name: Build Kernel - Tab A7 (SM-T500)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build Kernel by Joao
+    runs-on: ubuntu-22.04
+    
+    steps:
+    - name: Checkout Kernel Source
+      uses: actions/checkout@v4
+      with:
+        path: kernel_source
+
+    - name: Setup Build Environment
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential bc bison flex libssl-dev ccache libelf-dev clang lld python3
+        
+    - name: Download Proton Clang
+      run: |
+        git clone --depth=1 https://github.com/kdrag0n/proton-clang.git clang
+        
+    - name: Build the Kernel
+      working-directory: kernel_source
+      run: |
+        # Exportando as variáveis para usar o Proton Clang
+        export PATH="$GITHUB_WORKSPACE/clang/bin:$PATH"
+        export ARCH=arm64
+        export SUBARCH=arm64
+        
+        # Gerando o .config usando o seu gta4l_eur_open_defconfig
+        make O=out ARCH=arm64 gta4l_eur_open_defconfig
+        
+        # A Compilação pesada forçando LLVM/Clang
+        make -j$(nproc) O=out ARCH=arm64 CC=clang CROSS_COMPILE=aarch64-linux-gnu- CROSS_COMPILE_ARM32=arm-linux-gnueabi- LLVM=1 LLVM_IAS=1
+        
+    - name: Upload Kernel Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: Image.gz-dtb
+        path: kernel_source/out/arch/arm64/boot/Image.gz-dtb
