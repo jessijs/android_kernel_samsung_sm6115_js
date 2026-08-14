@@ -13,8 +13,18 @@ jobs:
       uses: actions/checkout@v4
       with:
         path: kernel_source
-        submodules: 'recursive' # <-- MÁGICA 1: Baixa os submodules do KernelSU/SuSFS
         fetch-depth: 1
+
+    - name: O Exorcismo do Baseband-guard (Fix Submodules)
+      working-directory: kernel_source
+      run: |
+        # Remove a referência do submódulo quebrado para não travar o git
+        git config --file .gitmodules --remove-section submodule.Baseband-guard || true
+        git rm --cached Baseband-guard || true
+        rm -rf Baseband-guard || true
+        
+        # Agora sim, atualiza apenas os submódulos saudáveis (como o KernelSU)
+        git submodule update --init --recursive
 
     - name: Setup Build Environment
       run: |
@@ -32,8 +42,7 @@ jobs:
         export ARCH=arm64
         export SUBARCH=arm64
         
-        # MÁGICA 2: Trava de segurança para o KernelSU
-        # Se o Kernel procurar em drivers/kernelsu mas a pasta estiver na raiz, criamos um link.
+        # Trava de segurança para o KernelSU (Caso o DevCat3 tenha colocado na raiz)
         if [ ! -f "drivers/kernelsu/Kconfig" ] && [ -d "KernelSU" ]; then
             echo "Corrigindo o caminho do KernelSU..."
             ln -sf ../KernelSU drivers/kernelsu
